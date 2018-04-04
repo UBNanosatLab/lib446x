@@ -27,6 +27,17 @@
 #define OPT_XTAL                                            0x00
 #define OPT_TCXO                                            0x01
 
+#define MOD_SRC_PKT                                         0x00
+#define MOD_SRC_PIN                                         0x08
+#define MOD_SRC_RAND                                        0x10
+
+#define MOD_TYPE_CW                                         0x00
+#define MOD_TYPE_OOK                                        0x01
+#define MOD_TYPE_2FSK                                       0x02
+#define MOD_TYPE_2GFSK                                      0x03
+#define MOD_TYPE_4FSK                                       0x04
+#define MOD_TYPE_4GFSK                                      0x05
+
 #define MAX_PACKET_SIZE 255 /**< @brief maximum packet size in bytes*/
 #define FIFO_SIZE 64
 #define RX_FIFO_THRESH 48
@@ -144,6 +155,14 @@ int si446x_config_crc(struct si446x_device *dev, uint8_t cfg);
  * @return negative error code or 0 for success
  */
 int si446x_set_tx_pwr(struct si446x_device *dev, uint8_t pwr);
+
+/**
+ * Set Si446x modulation type (e.g. OOK, GFSK, pseudorandom noise)
+ * @param device the si446x device
+ * @param mod_type modulation type
+ * @return negative error code or 0 for success
+ */
+int si446x_set_mod_type(struct si446x_device *dev, uint8_t mod_type);
 
 /**
  * Set GPIO pin configurations

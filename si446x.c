@@ -1000,6 +1000,10 @@ int si446x_cfg_gpio(struct si446x_device *dev, uint8_t gpio0, uint8_t gpio1,
     return wait_cts(dev);
 }
 
+int si446x_set_mod_type(struct si446x_device *dev, uint8_t mod_type) {
+    return set_property(dev, PROP_MODEM_GROUP, PROP_MODEM_MOD_TYPE, mod_type);
+}
+
 //int si446x_get_temp(struct si446x_device *dev, int *temp) {
 //
 //    int err;
