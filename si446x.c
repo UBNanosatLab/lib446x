@@ -616,6 +616,17 @@ int si446x_init(struct si446x_device *dev)
     return 0;
 }
 
+int si446x_reset(struct si446x_device *dev)
+{
+    // Reset the Si446x (300 us strobe of SDN)
+    gpio_write(dev->sdn_pin, HIGH);
+    delay_micros(300);
+    gpio_write(dev->sdn_pin, LOW);
+
+    // Wait for POR (6 ms)
+    delay_micros(6000);
+}
+
 int si446x_get_part_info(struct si446x_device *device,
                          struct si446x_part_info *info)
 {
@@ -825,6 +836,14 @@ int si446x_send_async(struct si446x_device *dev, int len, uint8_t *data,
         return err;
     }
 
+    // Clear the RX FIFO
+    uint8_t fifo_cmd_buf = CLR_RX_FIFO;
+    err = send_command(dev, CMD_FIFO_INFO, sizeof(fifo_cmd_buf), &fifo_cmd_buf);
+
+    if (err) {
+        return err;
+    }
+
     dev->state = TX;
 
     err = send_command(dev, CMD_START_TX, sizeof(tx_config), tx_config);
@@ -863,6 +882,15 @@ int si446x_recv_async(struct si446x_device *dev, int len,
     dev->rx_buf.data = buf;
 
     int err;
+
+    // Clear the RX FIFO
+    uint8_t fifo_cmd_buf = CLR_RX_FIFO;
+    err = send_command(dev, CMD_FIFO_INFO, sizeof(fifo_cmd_buf), &fifo_cmd_buf);
+
+    if (err) {
+        return err;
+    }
+
     uint8_t rx_config[] = {
         0x00,               // Channel 0
         0x00,               // RX immediately
@@ -949,10 +977,21 @@ int si446x_setup_tx(struct si446x_device *dev, int len, uint8_t *data,
     return 0;
 }
 
-//TODO: State transitions
 int si446x_fire_tx(struct si446x_device *dev)
 {
     int err;
+
+    if (dev->state == RX || dev->state == TX) {
+        return -EBUSY;
+    }
+
+    // Clear the RX FIFO
+    uint8_t fifo_cmd_buf = CLR_RX_FIFO;
+    err = send_command(dev, CMD_FIFO_INFO, sizeof(fifo_cmd_buf), &fifo_cmd_buf);
+
+    if (err) {
+        return err;
+    }
 
     uint8_t tx_config[] = {
         0x00, // Channel 0
@@ -961,9 +1000,12 @@ int si446x_fire_tx(struct si446x_device *dev)
         0x00, // length[7:0]
     };
 
+    dev->state = TX;
+
     err = send_command(dev, CMD_START_TX, sizeof(tx_config), tx_config);
 
     if (err) {
+        dev->state = IDLE;
         return err;
     }
 

@@ -6,7 +6,7 @@
 #include <stdint.h>
 
 #define ESUCCESS 0 /**< @brief command succeeded */
-#define ETIMEOUT 1 /**< @brief timeout waitng for CTS*/
+#define ETIMEOUT 1 /**< @brief timeout waiting for CTS*/
 #define EWRONGPART 2 /**< @brief unsupported part number*/
 #define EINVAL 3 /**< @brief invalid parameter*/
 #define EINVALSTATE 4 /**< @brief invalid internal state*/
