@@ -625,6 +625,7 @@ int si446x_reset(struct si446x_device *dev)
 
     // Wait for POR (6 ms)
     delay_micros(6000);
+    return ESUCCESS;
 }
 
 int si446x_get_part_info(struct si446x_device *device,
