@@ -845,6 +845,12 @@ int si446x_send_async(struct si446x_device *dev, int len, uint8_t *data,
         return err;
     }
 
+    err = wait_cts(dev);
+
+    if (err) {
+        return err;
+    }
+
     dev->state = TX;
 
     err = send_command(dev, CMD_START_TX, sizeof(tx_config), tx_config);
@@ -887,6 +893,12 @@ int si446x_recv_async(struct si446x_device *dev, int len,
     // Clear the RX FIFO
     uint8_t fifo_cmd_buf = CLR_RX_FIFO;
     err = send_command(dev, CMD_FIFO_INFO, sizeof(fifo_cmd_buf), &fifo_cmd_buf);
+
+    if (err) {
+        return err;
+    }
+
+    err = wait_cts(dev);
 
     if (err) {
         return err;
@@ -989,6 +1001,12 @@ int si446x_fire_tx(struct si446x_device *dev)
     // Clear the RX FIFO
     uint8_t fifo_cmd_buf = CLR_RX_FIFO;
     err = send_command(dev, CMD_FIFO_INFO, sizeof(fifo_cmd_buf), &fifo_cmd_buf);
+
+    if (err) {
+        return err;
+    }
+
+    err = wait_cts(dev);
 
     if (err) {
         return err;
