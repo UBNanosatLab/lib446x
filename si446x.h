@@ -229,9 +229,11 @@ int si446x_update(struct si446x_device *dev);
  * @param device the si446x device
  * @param len the length of the data in bytes
  * @param data pointer to the data
+ * @param handler function to call upon packet completion
  * @return negative error code or 0 for success
  */
-int si446x_setup_tx(struct si446x_device *dev, int len, uint8_t *data);
+int si446x_setup_tx(struct si446x_device *dev, int len, uint8_t *data,
+                    void (*handler)(struct si446x_device *dev, int err));
 
 /**
  * Transmit the previously setup packet

@@ -175,14 +175,16 @@ static int handle_fifo_empty(struct si446x_device *dev)
     int rem = dev->tx_buf.len - dev->tx_pkt_index;
     int err = 0;
 
-    // Write out next chunk of the packet
-    if (rem > FIFO_SIZE - TX_FIFO_THRESH) {
-        err = write_tx_fifo(dev, FIFO_SIZE - TX_FIFO_THRESH,
-                           dev->tx_buf.data + dev->tx_pkt_index);
-        dev->rx_pkt_index += FIFO_SIZE - TX_FIFO_THRESH;
-    } else {
-        err = write_tx_fifo(dev, rem, dev->tx_buf.data + dev->tx_pkt_index);
-        dev->rx_pkt_index += rem;
+    if (rem > 0) {
+        // Write out next chunk of the packet
+        if (rem > FIFO_SIZE - TX_FIFO_THRESH) {
+            err = write_tx_fifo(dev, FIFO_SIZE - TX_FIFO_THRESH,
+                               dev->tx_buf.data + dev->tx_pkt_index);
+            dev->rx_pkt_index += FIFO_SIZE - TX_FIFO_THRESH;
+        } else {
+            err = write_tx_fifo(dev, rem, dev->tx_buf.data + dev->tx_pkt_index);
+            dev->rx_pkt_index += rem;
+        }
     }
 
     return err;
@@ -383,7 +385,7 @@ int si446x_update(struct si446x_device *dev)
     // Clear interrupts
     // TODO: struct for this?, use designated initialization
     uint8_t int_data[] = {
-        0xE0, // PACKET_SENT_PEND_CLR & PACKET_RX_PEND_CLR & CRC_ERR_PEND_CLR &
+        0xC0, // PACKET_SENT_PEND_CLR & PACKET_RX_PEND_CLR & CRC_ERR_PEND_CLR &
               // TX_FIFO_ALMOST_EMPTY_PEND_CLR & RX_FIFO_ALMOST_FULL_PEND_CLR
         0x3F, //
         0xFF  //
@@ -407,7 +409,7 @@ int si446x_update(struct si446x_device *dev)
     }
 
     // TX_FIFO_ALMOST_EMPTY_PEND
-    if (int_status[3] & TX_FIFO_ALMOST_EMPTY) {
+    if (int_status[2] & TX_FIFO_ALMOST_EMPTY) {
         err = handle_fifo_empty(dev);
         if (err) {
             return err;
@@ -415,7 +417,7 @@ int si446x_update(struct si446x_device *dev)
     }
 
     // RX_FIFO_ALMOST_FULL_PEND
-    if (int_status[3] & RX_FIFO_ALMOST_FULL) {
+    if (int_status[2] & RX_FIFO_ALMOST_FULL) {
         err = handle_fifo_full(dev);
         if (err) {
             return err;
@@ -423,7 +425,7 @@ int si446x_update(struct si446x_device *dev)
     }
 
     // PACKET_RX_PEND
-    if (int_status[3] & PACKET_RX) {
+    if (int_status[2] & PACKET_RX) {
         err = handle_packet_rx(dev);
         if (err) {
             return err;
@@ -431,7 +433,7 @@ int si446x_update(struct si446x_device *dev)
     }
 
     // CRC_ERR_PEND
-    if (int_status[3] & CRC_ERROR) {
+    if (int_status[2] & CRC_ERROR) {
         err = handle_invalid_chksum(dev);
         if (err) {
             return err;
@@ -439,7 +441,7 @@ int si446x_update(struct si446x_device *dev)
     }
 
     // PACKET_SENT_PEND
-    if (int_status[3] & PACKET_SENT) {
+    if (int_status[2] & PACKET_SENT) {
         err = handle_packet_tx(dev);
         if (err) {
             return err;
@@ -604,8 +606,9 @@ int si446x_init(struct si446x_device *dev)
       return err;
     }
 
-    err = config_interrupts(dev, PH_INT_STATUS_EN, PACKET_RX | CRC_ERROR |
-                            TX_FIFO_ALMOST_EMPTY | RX_FIFO_ALMOST_FULL, 0, 0);
+    err = config_interrupts(dev, PH_INT_STATUS_EN, PACKET_RX | PACKET_SENT |
+                                 CRC_ERROR | TX_FIFO_ALMOST_EMPTY |
+                                 RX_FIFO_ALMOST_FULL, 0, 0);
     if (err) {
       return err;
     }
@@ -887,9 +890,11 @@ int si446x_recv_async(struct si446x_device *dev, int len,
     return ESUCCESS;
 }
 
-// TODO: BUG: Only works for small (< FIFO SIZE - 1) packets
-int si446x_setup_tx(struct si446x_device *dev, int len, uint8_t *data)
+int si446x_setup_tx(struct si446x_device *dev, int len, uint8_t *data,
+                    void (*handler)(struct si446x_device *dev, int err))
 {
+
+
     int err;
     uint8_t packet_len = len;
 
@@ -907,7 +912,17 @@ int si446x_setup_tx(struct si446x_device *dev, int len, uint8_t *data)
         return err;
     }
 
-    err = send_command(dev, CMD_WRITE_TX_FIFO, len, data);
+    dev->pkt_tx_handler = handler;
+    dev->tx_buf.data = data;
+    dev->tx_buf.len = len;
+
+    if (len > FIFO_SIZE - sizeof(packet_len)) {
+        dev->tx_pkt_index = FIFO_SIZE - sizeof(packet_len);
+    } else {
+        dev->tx_pkt_index = len;
+    }
+
+    err = send_command(dev, CMD_WRITE_TX_FIFO, dev->tx_pkt_index, data);
 
     if (err) {
         return err;
