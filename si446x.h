@@ -13,6 +13,7 @@
 #define ETOOLONG 5 /**< @brief packet too long*/
 #define ECHKSUM 6 /**< @brief invalid check sum*/
 #define EBUSY 7 /**< @brief pending operation*/
+#define ERXTIMEOUT 8 /**< @brief Si446x RX timed out*/
 
 #define ENOTIMPL 127  /**< @brief not yet implemented functionality*/
 
@@ -83,6 +84,7 @@ struct si446x_device {
     uint8_t config;
     enum si446x_state state;
     int err; // Used in blocking send / recv
+    volatile bool rx_timeout;
 };
 
 /**
@@ -240,5 +242,11 @@ int si446x_setup_tx(struct si446x_device *dev, int len, uint8_t *data,
  * @return negative error code or 0 for success
  */
 int si446x_fire_tx(struct si446x_device *dev);
+
+/**
+ * Indicate that packet RX has timed out
+ * @return negative error code or 0 for success
+ */
+int si446x_rx_timeout(struct si446x_device *dev);
 
 #endif

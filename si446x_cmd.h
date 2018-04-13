@@ -13,6 +13,7 @@
 #define CMD_START_TX                                        0x31
 #define CMD_START_RX                                        0x32
 #define CMD_REQUEST_DEVICE_STATE                            0x33
+#define CMD_CHANGE_STATE                                    0x34
 #define CMD_READ_CMD_BUF                                    0x44
 #define CMD_WRITE_TX_FIFO                                   0x66
 #define CMD_READ_RX_FIFO                                    0x77

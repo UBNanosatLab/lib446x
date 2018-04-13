@@ -8,7 +8,7 @@
 
 #include "radio_config.h"
 
-#define MAX_CTS_RETRY 2500
+#define MAX_CTS_RETRY 5000
 
 static int send_command(struct si446x_device *dev, uint8_t cmd, int data_len,
                         uint8_t *data)
@@ -47,7 +47,7 @@ static int wait_cts(struct si446x_device *dev)
 
         attempts++;
 
-        delay_micros(50);
+        delay_micros(25);
     }
 
     return -ETIMEOUT;
@@ -122,6 +122,10 @@ static int set_property(struct si446x_device *dev, uint8_t prop_grp,
 
 static int read_rx_fifo(struct si446x_device *dev, int len, uint8_t *data)
 {
+    if (len < 0 || len > 0xFF) {
+        return -EINVAL;
+    }
+
     gpio_write(dev->nsel_pin, LOW);
     spi_write_byte(CMD_READ_RX_FIFO);
     spi_read_data(len, data);
@@ -161,6 +165,8 @@ static int write_tx_fifo(struct si446x_device *dev, int len, uint8_t *data)
         return err;
     }
 
+    // TODO: Pretty sure I shouldn't wait for CTS here
+
     err = wait_cts(dev);
 
     if (err) {
@@ -180,10 +186,10 @@ static int handle_fifo_empty(struct si446x_device *dev)
         if (rem > FIFO_SIZE - TX_FIFO_THRESH) {
             err = write_tx_fifo(dev, FIFO_SIZE - TX_FIFO_THRESH,
                                dev->tx_buf.data + dev->tx_pkt_index);
-            dev->rx_pkt_index += FIFO_SIZE - TX_FIFO_THRESH;
+            dev->tx_pkt_index += FIFO_SIZE - TX_FIFO_THRESH;
         } else {
             err = write_tx_fifo(dev, rem, dev->tx_buf.data + dev->tx_pkt_index);
-            dev->rx_pkt_index += rem;
+            dev->tx_pkt_index += rem;
         }
     }
 
@@ -208,23 +214,52 @@ static int handle_fifo_full(struct si446x_device *dev)
         return err;
     }
 
-    // Read in next chunk of the packet
-    // If the buffer is too small, just discard the packet
-    if (dev->rx_pkt_len > dev->rx_buf.len) {
-        err = read_rx_fifo(dev, to_read, NULL);
+    int rem = dev->rx_pkt_len - dev->rx_pkt_index;
+
+    if (to_read > rem) {
+        // ok, so something is just confused now...
+        // Read what should remain then clear the FIFO
+        // If the buffer is too small, just discard the packet
+        if (dev->rx_pkt_len > dev->rx_buf.len) {
+            err = read_rx_fifo(dev, rem, NULL);
+        } else {
+            err = read_rx_fifo(dev, rem, dev->rx_buf.data + dev->rx_pkt_index);
+        }
+
+        dev->rx_pkt_index += rem;
+
+        // Clear the FIFO
+        uint8_t fifo_cmd_buf = CLR_RX_FIFO;
+        err = send_command(dev, CMD_FIFO_INFO, sizeof(fifo_cmd_buf), &fifo_cmd_buf);
+
+        if (err) {
+            return err;
+        }
+
+        return wait_cts(dev);
+
     } else {
-        err = read_rx_fifo(dev, to_read, dev->rx_buf.data + dev->rx_pkt_index);
+        // Read in next chunk of the packet
+        // If the buffer is too small, just discard the packet
+        if (dev->rx_pkt_len > dev->rx_buf.len) {
+            err = read_rx_fifo(dev, to_read, NULL);
+        } else {
+            err = read_rx_fifo(dev, to_read, dev->rx_buf.data + dev->rx_pkt_index);
+        }
+
+        dev->rx_pkt_index += to_read;
+
+        return err;
     }
-
-    dev->rx_pkt_index += to_read;
-
-    return err;
+    // Not reachable
 }
 
 static int handle_packet_rx(struct si446x_device *dev)
 {
 
     int err = 0;
+
+    dev->state = IDLE;
 
     if (!dev->has_rx_len) {
         // TODO: Is discarding the volatile qualifier safe here?
@@ -236,10 +271,8 @@ static int handle_packet_rx(struct si446x_device *dev)
     if (err) {
         if (dev->pkt_rx_handler) {
             dev->pkt_rx_handler(dev, err, 0, NULL);
-            dev->state = IDLE;
             return ESUCCESS; // We don't report errors twice
         } else {
-            dev->state = IDLE;
             return err;
         }
     }
@@ -256,6 +289,32 @@ static int handle_packet_rx(struct si446x_device *dev)
 
     dev->rx_pkt_index += rem;
 
+    if (err) {
+        if (dev->pkt_rx_handler) {
+            dev->pkt_rx_handler(dev, err, 0, NULL);
+            return ESUCCESS; // We don't report errors twice
+        } else {
+            return err;
+        }
+    }
+
+    // Packet received, clear whatever remains in the FIFO
+    // In case packet handler screwed up...
+    uint8_t fifo_cmd_buf = CLR_RX_FIFO;
+    err = send_command(dev, CMD_FIFO_INFO, sizeof(fifo_cmd_buf), &fifo_cmd_buf);
+
+    if (err) {
+        if (dev->pkt_rx_handler) {
+            dev->pkt_rx_handler(dev, err, 0, NULL);
+            return ESUCCESS; // We don't report errors twice
+        } else {
+            return err;
+        }
+    }
+
+    err = wait_cts(dev);
+
+
     if (err && dev->pkt_rx_handler) {
         dev->pkt_rx_handler(dev, err, 0, NULL);
     } else if (dev->rx_pkt_len > dev->rx_buf.len && dev->pkt_rx_handler) {
@@ -263,11 +322,9 @@ static int handle_packet_rx(struct si446x_device *dev)
     } else if (dev->pkt_rx_handler){
         dev->pkt_rx_handler(dev, ESUCCESS,  dev->rx_pkt_len, dev->rx_buf.data);
     } else if (err) { // Error but no callback registered
-        dev->state = IDLE;
         return err;
     }
 
-    dev->state = IDLE;
     return ESUCCESS;
 }
 
@@ -275,21 +332,21 @@ static int handle_invalid_chksum(struct si446x_device *dev)
 {
     int err = 0;
 
+    dev->state = IDLE;
+
     if (!dev->has_rx_len) {
         // TODO: Is discarding the volatile qualifier safe here?
         err = read_rx_fifo(dev, sizeof(dev->rx_pkt_len),
                            (uint8_t *) &dev->rx_pkt_len);
         dev->has_rx_len = true;
-    }
 
-    if (err) {
-        if (dev->pkt_rx_handler) {
-            dev->pkt_rx_handler(dev, err, 0, NULL);
-            dev->state = IDLE;
-            return ESUCCESS; // We don't report errors twice
-        } else {
-            dev->state = IDLE;
-            return err;
+        if (err) {
+            if (dev->pkt_rx_handler) {
+                dev->pkt_rx_handler(dev, err, 0, NULL);
+                return ESUCCESS; // We don't report errors twice
+            } else {
+                return err;
+            }
         }
     }
 
@@ -312,10 +369,8 @@ static int handle_invalid_chksum(struct si446x_device *dev)
     if (err) {
         if (dev->pkt_rx_handler) {
             dev->pkt_rx_handler(dev, err, 0, NULL);
-            dev->state = IDLE;
             return ESUCCESS; // We don't report errors twice
         } else {
-            dev->state = IDLE;
             return err;
         }
     }
@@ -331,11 +386,9 @@ static int handle_invalid_chksum(struct si446x_device *dev)
     } else if (dev->pkt_rx_handler) {
         dev->pkt_rx_handler(dev, -ECHKSUM, dev->rx_pkt_len, dev->rx_buf.data);
     } else if (err) { // Error but no callback registered
-        dev->state = IDLE;
         return err;
     }
 
-    dev->state = IDLE;
     return ESUCCESS;
 }
 
@@ -382,6 +435,8 @@ int si446x_update(struct si446x_device *dev)
 
     // TODO: RSSI / Preamble / Sync word detect to put us in RX state
 
+    int err = 0;
+
     // Clear interrupts
     // TODO: struct for this?, use designated initialization
     uint8_t int_data[] = {
@@ -391,10 +446,42 @@ int si446x_update(struct si446x_device *dev)
         0xFF  //
     };
 
-    int err = 0;
-
     // TODO: Struct for this
     uint8_t int_status[8];
+
+    if (dev->rx_timeout) {
+        uint8_t state = STATE_READY;
+        err = send_command(dev, CMD_CHANGE_STATE, sizeof(state), &state);
+
+        if (err) {
+            return err;
+        }
+
+        err = wait_cts(dev);
+
+        if (err) {
+            return err;
+        }
+
+        uint8_t fifo_cmd_buf = CLR_RX_FIFO;
+        err = send_command(dev, CMD_FIFO_INFO, sizeof(fifo_cmd_buf), &fifo_cmd_buf);
+
+        err = wait_cts(dev);
+
+        if (err) {
+            return err;
+        }
+
+        dev->state = IDLE;
+        dev->rx_timeout = false;
+
+        if (dev->pkt_rx_handler) {
+            dev->pkt_rx_handler(dev, -ERXTIMEOUT, 0, NULL);
+            return ESUCCESS;
+        } else {
+            return -ERXTIMEOUT;
+        }
+    }
 
     err = send_command(dev, CMD_GET_INT_STATUS, sizeof(int_data), int_data);
 
@@ -472,6 +559,8 @@ int si446x_create(struct si446x_device *dev, int nsel_pin, int sdn_pin,
     dev->has_rx_len = false;
 
     dev->config = config;
+
+    dev->rx_timeout = false;
 
     return 0;
 }
@@ -790,6 +879,20 @@ int si446x_send_async(struct si446x_device *dev, int len, uint8_t *data,
         return -EBUSY;
     }
 
+    // Clear the both FIFOs
+    uint8_t fifo_cmd_buf = CLR_RX_FIFO | CLR_TX_FIFO;
+    err = send_command(dev, CMD_FIFO_INFO, sizeof(fifo_cmd_buf), &fifo_cmd_buf);
+
+    if (err) {
+        return err;
+    }
+
+    err = wait_cts(dev);
+
+    if (err) {
+        return err;
+    }
+
     err = send_command(dev, CMD_WRITE_TX_FIFO, sizeof(packet_len), &packet_len);
 
     if (err) {
@@ -837,20 +940,6 @@ int si446x_send_async(struct si446x_device *dev, int len, uint8_t *data,
         return err;
     }
 
-    // Clear the RX FIFO
-    uint8_t fifo_cmd_buf = CLR_RX_FIFO;
-    err = send_command(dev, CMD_FIFO_INFO, sizeof(fifo_cmd_buf), &fifo_cmd_buf);
-
-    if (err) {
-        return err;
-    }
-
-    err = wait_cts(dev);
-
-    if (err) {
-        return err;
-    }
-
     dev->state = TX;
 
     err = send_command(dev, CMD_START_TX, sizeof(tx_config), tx_config);
@@ -890,8 +979,8 @@ int si446x_recv_async(struct si446x_device *dev, int len,
 
     int err;
 
-    // Clear the RX FIFO
-    uint8_t fifo_cmd_buf = CLR_RX_FIFO;
+    // Clear the both FIFOs
+    uint8_t fifo_cmd_buf = CLR_RX_FIFO | CLR_TX_FIFO;
     err = send_command(dev, CMD_FIFO_INFO, sizeof(fifo_cmd_buf), &fifo_cmd_buf);
 
     if (err) {
@@ -998,20 +1087,6 @@ int si446x_fire_tx(struct si446x_device *dev)
         return -EBUSY;
     }
 
-    // Clear the RX FIFO
-    uint8_t fifo_cmd_buf = CLR_RX_FIFO;
-    err = send_command(dev, CMD_FIFO_INFO, sizeof(fifo_cmd_buf), &fifo_cmd_buf);
-
-    if (err) {
-        return err;
-    }
-
-    err = wait_cts(dev);
-
-    if (err) {
-        return err;
-    }
-
     uint8_t tx_config[] = {
         0x00, // Channel 0
         0x30, //READY, NO RETRANS, START NOW
@@ -1046,6 +1121,20 @@ int si446x_fire_tx(struct si446x_device *dev)
       return err;
     }
 
+    // Clear the RX FIFO
+    uint8_t fifo_cmd_buf = CLR_RX_FIFO;
+    err = send_command(dev, CMD_FIFO_INFO, sizeof(fifo_cmd_buf), &fifo_cmd_buf);
+
+    if (err) {
+        return err;
+    }
+
+    err = wait_cts(dev);
+
+    if (err) {
+        return err;
+    }
+
     return 0;
 }
 
@@ -1078,6 +1167,12 @@ int si446x_cfg_gpio(struct si446x_device *dev, uint8_t gpio0, uint8_t gpio1,
 
 int si446x_set_mod_type(struct si446x_device *dev, uint8_t mod_type) {
     return set_property(dev, PROP_MODEM_GROUP, PROP_MODEM_MOD_TYPE, mod_type);
+}
+
+int si446x_rx_timeout(struct si446x_device *dev)
+{
+    dev->rx_timeout = true;
+    return ESUCCESS;
 }
 
 //int si446x_get_temp(struct si446x_device *dev, int *temp) {
