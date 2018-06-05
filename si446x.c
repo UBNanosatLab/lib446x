@@ -1175,6 +1175,32 @@ int si446x_rx_timeout(struct si446x_device *dev)
     return ESUCCESS;
 }
 
+int si446x_set_deviation(struct si446x_device *dev, uint32_t deviation) {
+
+    int err;
+
+    if (deviation > 0x0001FFFF) {
+        return -EINVAL;
+    }
+
+    err = set_property(dev, PROP_MODEM_GROUP, PROP_MODEM_FREQ_DEV_2,
+                (deviation >> 16) & 0xFF);
+
+    if (err) {
+        return err;
+    }
+
+    err = set_property(dev, PROP_MODEM_GROUP, PROP_MODEM_FREQ_DEV_1,
+                (deviation >> 8) & 0xFF);
+
+    if (err) {
+        return err;
+    }
+
+    return set_property(dev, PROP_MODEM_GROUP, PROP_MODEM_FREQ_DEV_0, 
+                (deviation >> 0) & 0xFF);
+}
+
 //int si446x_get_temp(struct si446x_device *dev, int *temp) {
 //
 //    int err;

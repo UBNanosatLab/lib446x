@@ -249,4 +249,12 @@ int si446x_fire_tx(struct si446x_device *dev);
  */
 int si446x_rx_timeout(struct si446x_device *dev);
 
+/**
+ * Ready the given data for transmission
+ * @param device the si446x device
+ * @param deviation_cfg deviation as a Si446x configuration value (not in Hz!)
+ * @return negative error code or 0 for success
+ */
+int si446x_set_deviation(struct si446x_device *dev, uint32_t deviation_cfg);
+
 #endif
