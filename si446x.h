@@ -28,6 +28,14 @@
 #define OPT_XTAL                                            0x00
 #define OPT_TCXO                                            0x01
 
+#define DIRECT_MODE_SYNC                                    0x00
+#define DIRECT_MODE_ASYNC                                   0x80
+
+#define DIRECT_MODE_GPIO0                                   0x00
+#define DIRECT_MODE_GPIO1                                   0x20
+#define DIRECT_MODE_GPIO2                                   0x40
+#define DIRECT_MODE_GPIO3                                   0x60
+
 #define MOD_SRC_PKT                                         0x00
 #define MOD_SRC_PIN                                         0x08
 #define MOD_SRC_RAND                                        0x10
