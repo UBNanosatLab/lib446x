@@ -21,7 +21,7 @@ static int send_command(struct si446x_device *dev, uint8_t cmd, int data_len,
     return 0;
 }
 
-static int send_buffer(struct si446x_device *dev, int data_len, uint8_t *data)
+static int send_buffer(struct si446x_device *dev, int data_len, const uint8_t *data)
 {
     gpio_write(dev->nsel_pin, LOW);
     spi_write_data(data_len, data);
@@ -55,7 +55,7 @@ static int wait_cts(struct si446x_device *dev)
 }
 
 static int send_cfg_data_wait(struct si446x_device *dev, int data_len,
-                              uint8_t *data)
+                              const uint8_t *data)
 {
     int err;
     err = send_buffer(dev, data_len, data);
@@ -650,7 +650,7 @@ int si446x_init(struct si446x_device *dev)
 
     // Black-box stuff, send cfg blob
 
-    uint8_t *cfg = NULL;
+    const uint8_t *cfg = NULL;
 
     if (dev->part == 0x4463) {
         cfg = si4463_cfg;

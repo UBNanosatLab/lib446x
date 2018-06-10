@@ -23,10 +23,10 @@ int main(int argc, char const *argv[]) {
     int len = cfg[++i];
 
     #ifdef SI4464
-    printf("uint8_t si4464_cfg[] = {\n");
+    printf("const uint8_t si4464_cfg[] = {\n");
     #endif
     #ifdef SI4463
-    printf("uint8_t si4463_cfg[] = {\n");
+    printf("const uint8_t si4463_cfg[] = {\n");
     #endif
 
     while (len) {

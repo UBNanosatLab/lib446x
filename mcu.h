@@ -26,7 +26,7 @@ extern "C" {
 
 extern void spi_init();
 extern void spi_write_byte(unsigned char b);
-extern void spi_write_data(int len, unsigned char *data);
+extern void spi_write_data(int len, const unsigned char *data);
 extern void spi_read_data(int len, unsigned char *data);
 
 extern void gpio_config(int pin, int mode);
