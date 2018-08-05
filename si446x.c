@@ -683,13 +683,13 @@ int si446x_init(struct si446x_device *dev)
       return err;
     }
 
-    err = set_property(dev, PROP_RF_PKT_LEN_12_GROUP, PROP_PKT_TX_THRESHOLD,
+    err = set_property(dev, PROP_PKT_GROUP, PROP_PKT_TX_THRESHOLD,
                        TX_FIFO_THRESH);
     if (err) {
       return err;
     }
 
-    err = set_property(dev, PROP_RF_PKT_LEN_12_GROUP, PROP_PKT_RX_THRESHOLD,
+    err = set_property(dev, PROP_PKT_GROUP, PROP_PKT_RX_THRESHOLD,
                        RX_FIFO_THRESH);
     if (err) {
       return err;

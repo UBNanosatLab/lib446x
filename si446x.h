@@ -47,6 +47,33 @@
 #define MOD_TYPE_4FSK                                       0x04
 #define MOD_TYPE_4GFSK                                      0x05
 
+#define GPIO_DONOTHING                                      0x00
+#define GPIO_TRISTATE                                       0x01
+// ...
+#define GPIO_CTS                                            0x08
+#define GPIO_INV_CTS                                        0x09
+#define GPIO_CMD_OVERLAP                                    0x0A
+// ...
+#define GPIO_EN_PA                                          0x0F
+#define GPIO_TX_DATA_CLK                                    0x10
+#define GPIO_RX_DATA_CLK                                    0x11
+#define GPIO_EN_LNA                                         0x12
+#define GPIO_TX_DATA                                        0x13
+#define GPIO_RX_DATA                                        0x14
+#define GPIO_RX_RAW_DATA                                    0x15
+// ...
+#define GPIO_SYNC_WORD_DETECT                               0x1A
+// ...
+#define GPIO_TX_STATE                                       0x20
+#define GPIO_RX_STATE                                       0x21
+#define GPIO_RX_FIFO_FULL                                   0x22
+#define GPIO_TX_FIFO_EMPTY                                  0x23
+// ...
+
+
+
+
+
 #define MAX_PACKET_SIZE 255 /**< @brief maximum packet size in bytes*/
 #define FIFO_SIZE 64
 #define RX_FIFO_THRESH 48

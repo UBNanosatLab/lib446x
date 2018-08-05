@@ -64,10 +64,6 @@
 #define TX_FIFO_ALMOST_EMPTY                                0x02
 #define RX_FIFO_ALMOST_FULL                                 0x01
 
-#define PROP_RF_PKT_LEN_12_GROUP                            0x12
-#define PROP_PKT_TX_THRESHOLD                               0x0B
-#define PROP_PKT_RX_THRESHOLD                               0x0C
-
 #define PROP_MODEM_GROUP                                    0x20
 #define PROP_MODEM_MOD_TYPE                                 0x00
 #define PROP_MODEM_FREQ_DEV_2                               0x0A
@@ -91,6 +87,8 @@
 
 #define PROP_PKT_GROUP                                      0x12
 #define PROP_PKT_CRC_CONFIG                                 0x00
+#define PROP_PKT_TX_THRESHOLD                               0x0B
+#define PROP_PKT_RX_THRESHOLD                               0x0C
 #define PROP_PKT_FIELD_2_LENGTH_12_8                        0x11
 #define PROP_PKT_FIELD_2_LENGTH_7_0                         0x12
 
