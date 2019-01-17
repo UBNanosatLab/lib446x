@@ -92,5 +92,7 @@
 #define PROP_PKT_FIELD_2_LENGTH_12_8                        0x11
 #define PROP_PKT_FIELD_2_LENGTH_7_0                         0x12
 
+#define PROP_PKT_FIELD_2_CRC_CONFIG                         0x14
+
 
 #endif

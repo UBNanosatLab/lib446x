@@ -285,6 +285,14 @@ int si446x_fire_tx(struct si446x_device *dev);
 int si446x_rx_timeout(struct si446x_device *dev);
 
 /**
+ * Sets if the packet handler should check the RX'd CRC
+ * @param device the si446x device
+ * @param check_crc should check crc
+ * @return negative error code or 0 for success
+ */
+int si446x_check_crc(struct si446x_device *dev, bool check_crc);
+
+/**
  * Ready the given data for transmission
  * @param device the si446x device
  * @param deviation_cfg deviation as a Si446x configuration value (not in Hz!)

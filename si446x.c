@@ -120,6 +120,24 @@ static int set_property(struct si446x_device *dev, uint8_t prop_grp,
 
 }
 
+static int get_property(struct si446x_device *dev, uint8_t prop_grp,
+                        uint8_t prop, uint8_t *value)
+{
+    int err;
+    uint8_t buf[] = {
+        prop_grp,
+        0x01, //length
+        prop
+    };
+
+    err = send_command(dev, CMD_SET_PROPERTY, 3, buf);
+    if (err) {
+        return err;
+    }
+
+    return read_response(dev, 1, value);
+}
+
 static int read_rx_fifo(struct si446x_device *dev, int len, uint8_t *data)
 {
     if (len < 0 || len > 0xFF) {
@@ -1167,6 +1185,25 @@ int si446x_cfg_gpio(struct si446x_device *dev, uint8_t gpio0, uint8_t gpio1,
 
 int si446x_set_mod_type(struct si446x_device *dev, uint8_t mod_type) {
     return set_property(dev, PROP_MODEM_GROUP, PROP_MODEM_MOD_TYPE, mod_type);
+}
+
+int si446x_check_crc(struct si446x_device *dev, bool check_crc) {
+
+    int err;
+    uint8_t crc_cfg;
+
+    err = get_property(dev, PROP_PKT_GROUP, PROP_PKT_FIELD_2_CRC_CONFIG, &crc_cfg);
+    if (err) {
+        return err;
+    }
+
+    if (check_crc) {
+        crc_cfg |= 0x02;  // CRC_ENABLE
+    } else {
+        crc_cfg &= ~0x02; // CRC_ENABLE
+    }
+
+    return set_property(dev, PROP_PKT_GROUP, PROP_PKT_FIELD_2_CRC_CONFIG, crc_cfg);
 }
 
 int si446x_rx_timeout(struct si446x_device *dev)
