@@ -54,7 +54,7 @@ static int wait_cts(struct si446x_device *dev)
 
 }
 
-static int send_cfg_data_wait(struct si446x_device *dev, int data_len,
+int si446x_send_cfg_data_wait(struct si446x_device *dev, int data_len,
                               const uint8_t *data)
 {
     int err;
@@ -681,7 +681,7 @@ int si446x_init(struct si446x_device *dev)
     int i = 0;
     int len = cfg[i++];
     while (len) {
-        err = send_cfg_data_wait(dev, len, cfg + i);
+        err = si446x_send_cfg_data_wait(dev, len, cfg + i);
         if (err) {
              return err;
         }
@@ -763,53 +763,8 @@ int si446x_get_part_info(struct si446x_device *device,
     return 0;
 }
 
-int si446x_set_frequency(struct si446x_device *dev, uint32_t freq)
+int si446x_set_frequency(struct si446x_device *dev, uint32_t fc, uint8_t band)
 {
-    uint8_t outdiv;
-    uint8_t band;
-
-    if (dev->part == 0x4464) {
-        if (freq > 119000000 && freq < 159000000) {
-            outdiv = 24;
-            band = 5;
-        } else if (freq > 177000000 && freq < 239000000) {
-            outdiv = 16;
-            band = 4;
-        } else if (freq > 235000000 && freq < 319000000) {
-            outdiv = 12;
-            band = 3;
-        } else if (freq > 353000000 && freq < 479000000) {
-            outdiv = 8;
-            band = 2;
-        } else if (freq > 470000000 && freq < 639000000) {
-            outdiv = 6;
-            band = 1;
-        } else if (freq > 705000000 && freq < 960000000) {
-            outdiv = 4;
-            band = 0;
-        }  else {
-            return -EINVAL;
-        }
-    } else { // 4460, 4461, 4463
-        if (freq > 142000000 && freq < 175000000) {
-            outdiv = 24;
-            band = 5;
-        } else if (freq > 284000000 && freq < 350000000) {
-            outdiv = 12;
-            band = 3;
-        } else if (freq > 420000000 && freq < 525000000) {
-            outdiv = 8;
-            band = 2;
-        } else if (freq > 850000000 && freq < 1050000000) {
-            outdiv = 4;
-            band = 0;
-        }  else {
-            return -EINVAL;
-        }
-    }
-
-    // fc = F / (2 * xo_freq / outdiv) * 2^19
-    uint32_t fc = (uint32_t) (outdiv * ((uint64_t) freq << 18) / dev->xo_freq);
 
     set_property(dev, PROP_FREQ_CTRL_GROUP, PROP_FREQ_CTRL_INTE,
                  (fc >> 19) - 1);
@@ -1198,9 +1153,9 @@ int si446x_check_crc(struct si446x_device *dev, bool check_crc) {
     }
 
     if (check_crc) {
-        crc_cfg |= 0x02;  // CRC_ENABLE
+        crc_cfg |= 0x08;  // CHECK_CRC
     } else {
-        crc_cfg &= ~0x02; // CRC_ENABLE
+        crc_cfg &= ~0x08; // ~CHECK_CRC
     }
 
     return set_property(dev, PROP_PKT_GROUP, PROP_PKT_FIELD_2_CRC_CONFIG, crc_cfg);

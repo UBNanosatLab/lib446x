@@ -72,8 +72,6 @@
 
 
 
-
-
 #define MAX_PACKET_SIZE 255 /**< @brief maximum packet size in bytes*/
 #define FIFO_SIZE 64
 #define RX_FIFO_THRESH 48
@@ -172,10 +170,12 @@ int si446x_get_part_info(struct si446x_device *device,
 /**
  * Set the transmit / receive frequency
  * @param device the si446x device
- * @param freq the desired frequency in hertz
+ * @param freq the desired fc value (See SiLabs datasheet, not Hz!)
+ * @param freq the desired band setting value
+ *             (See SiLabs datasheet, depends on 4463/4464)
  * @return negative error code or 0 for success
  */
-int si446x_set_frequency(struct si446x_device *device, uint32_t freq);
+int si446x_set_frequency(struct si446x_device *dev, uint32_t fc, uint8_t band);
 
 /**
  * Configure the CRC polynomial
@@ -299,5 +299,15 @@ int si446x_check_crc(struct si446x_device *dev, bool check_crc);
  * @return negative error code or 0 for success
  */
 int si446x_set_deviation(struct si446x_device *dev, uint32_t deviation_cfg);
+
+/**
+ * Send a pre-baked blob of data output from WDS
+ * @param device the si446x device
+ * @param data_len length of the data
+ * @param data the data
+ * @return negative error code or 0 for success
+ */
+int si446x_send_cfg_data_wait(struct si446x_device *dev, int data_len,
+                              const uint8_t *data);
 
 #endif
