@@ -1111,6 +1111,34 @@ int si446x_fire_tx(struct si446x_device *dev)
     return 0;
 }
 
+int si446x_abort_tx(struct si446x_device *dev)
+{
+    int err;
+
+    if (dev->state == RX || dev->state == IDLE) {
+        return -EBUSY;
+    }
+
+    dev->state = IDLE;
+
+    uint8_t next_state = STATE_READY ;
+    err = send_command(dev, CMD_CHANGE_STATE, sizeof(next_state), &next_state);
+
+    if (err) {
+        dev->state = TX;
+        return err;
+    }
+
+    err = wait_cts(dev);
+
+    if (err) {
+        dev->state = TX;
+        return err;
+    }
+
+    return 0;
+}
+
 int si446x_set_tx_pwr(struct si446x_device *dev, uint8_t pwr)
 {
     return set_property(dev, PROP_PA_GROUP, PROP_PA_PWR_LVL, pwr);
