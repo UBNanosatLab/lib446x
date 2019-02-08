@@ -13,7 +13,8 @@
 #define ETOOLONG 5 /**< @brief packet too long*/
 #define ECHKSUM 6 /**< @brief invalid check sum*/
 #define EBUSY 7 /**< @brief pending operation*/
-#define ERXTIMEOUT 8 /**< @brief Si446x RX timed out*/
+#define ESILICON 8 /**< @brief Si446x silicon bug, try again*/
+#define ERESETSI 9 /**< @brief Si446x silicon bug, reset RFIC and try again*/
 
 #define ENOTIMPL 127  /**< @brief not yet implemented functionality*/
 
@@ -153,10 +154,10 @@ int si446x_create(struct si446x_device *dev, int nsel_pin, int sdn_pin,
 int si446x_init(struct si446x_device *device);
 
 /**
- * Reset the Si446x
+ * Reset and reinitialize the Si446x
  * @return negative error code or 0 for success
  */
-int si446x_reset(struct si446x_device *dev);
+int si446x_reinit(struct si446x_device *dev);
 
 /**
  * Get part info
@@ -215,6 +216,8 @@ int si446x_cfg_gpio(struct si446x_device *dev, uint8_t gpio0, uint8_t gpio1,
 
 /**
  * Transmit the provided data
+ * Note: If this returns -ERESETSI, the si446x is stuck transmitting and 
+ * should be *immediately* reset
  * @param device the si446x device
  * @param len the length of the data in bytes
  * @param data pointer to the data
@@ -233,6 +236,8 @@ int si446x_recv(struct si446x_device *dev, int *len, uint8_t *data);
 
 /**
  * Transmit data asynchronously from the provided buffer
+ * Note: If this returns -ERESETSI, the si446x is stuck transmitting and 
+ * should be *immediately* reset
  * @param device the si446x device
  * @param len pointer to length of the buffer in bytes
  * @param data pointer to the buffer
@@ -274,6 +279,8 @@ int si446x_setup_tx(struct si446x_device *dev, int len, uint8_t *data,
 
 /**
  * Transmit the previously setup packet
+ * Note: If this returns -ERESETSI, the si446x is stuck transmitting and 
+ * should be *immediately* reset
  * @return negative error code or 0 for success
  */
 int si446x_fire_tx(struct si446x_device *dev);

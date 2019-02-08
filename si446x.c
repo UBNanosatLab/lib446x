@@ -8,7 +8,7 @@
 
 #include "radio_config.h"
 
-#define MAX_CTS_RETRY 5000
+#define MAX_CTS_RETRY 50
 
 static int send_command(struct si446x_device *dev, uint8_t cmd, int data_len,
                         uint8_t *data)
@@ -52,6 +52,18 @@ static int wait_cts(struct si446x_device *dev)
 
     return -ETIMEOUT;
 
+}
+
+static uint8_t poll_cts(struct si446x_device *dev)
+{
+    uint8_t resp = 0x00;
+
+    gpio_write(dev->nsel_pin, LOW);
+    spi_write_byte(CMD_READ_CMD_BUF);
+    spi_read_data(1, &resp);
+    gpio_write(dev->nsel_pin, HIGH);
+
+    return resp;
 }
 
 int si446x_send_cfg_data_wait(struct si446x_device *dev, int data_len,
@@ -494,10 +506,10 @@ int si446x_update(struct si446x_device *dev)
         dev->rx_timeout = false;
 
         if (dev->pkt_rx_handler) {
-            dev->pkt_rx_handler(dev, -ERXTIMEOUT, 0, NULL);
+            dev->pkt_rx_handler(dev, -ESILICON, 0, NULL);
             return ESUCCESS;
         } else {
-            return -ERXTIMEOUT;
+            return -ESILICON;
         }
     }
 
@@ -585,6 +597,20 @@ int si446x_create(struct si446x_device *dev, int nsel_pin, int sdn_pin,
 
 int si446x_init(struct si446x_device *dev)
 {
+
+    spi_init();
+    gpio_config(dev->int_pin, INPUT);
+
+    gpio_config(dev->nsel_pin, OUTPUT);
+    gpio_write(dev->nsel_pin, HIGH);
+    gpio_config(dev->sdn_pin, OUTPUT);
+
+    return si446x_reinit(dev);
+}
+
+int si446x_reinit(struct si446x_device *dev)
+{
+
     int err;
 
     //TODO: struct for this?
@@ -596,13 +622,6 @@ int si446x_init(struct si446x_device *dev)
         (dev->xo_freq >>  8) & 0xFF,
         (dev->xo_freq >>  0) & 0xFF
     };
-
-    spi_init();
-    gpio_config(dev->int_pin, INPUT);
-
-    gpio_config(dev->nsel_pin, OUTPUT);
-    gpio_write(dev->nsel_pin, HIGH);
-    gpio_config(dev->sdn_pin, OUTPUT);
 
     // Reset the Si446x (300 us strobe of SDN)
     gpio_write(dev->sdn_pin, HIGH);
@@ -720,18 +739,8 @@ int si446x_init(struct si446x_device *dev)
       return err;
     }
 
-    return 0;
-}
+    dev->state = IDLE;
 
-int si446x_reset(struct si446x_device *dev)
-{
-    // Reset the Si446x (300 us strobe of SDN)
-    gpio_write(dev->sdn_pin, HIGH);
-    delay_micros(300);
-    gpio_write(dev->sdn_pin, LOW);
-
-    // Wait for POR (6 ms)
-    delay_micros(6000);
     return ESUCCESS;
 }
 
@@ -913,6 +922,25 @@ int si446x_send_async(struct si446x_device *dev, int len, uint8_t *data,
         return err;
     }
 
+    // Switch to TUNE_TX
+    // This does almost all the work of getting to TX, but helps us avoid an 
+    // apparent silicon bug in RFIC. The bug still happens, but only on the 
+    // transition into TX. Since the TX_TUNE -> TX transition should only take
+    // about 60 us, we can detect this very quickly and reset
+
+    uint8_t next_state = STATE_TUNE_TX;
+    err = send_command(dev, CMD_CHANGE_STATE, sizeof(next_state), &next_state);
+
+    if (err) {
+        return err;
+    }
+
+    err = wait_cts(dev);
+
+    if (err) {
+        return err;
+    }
+
     dev->state = TX;
 
     err = send_command(dev, CMD_START_TX, sizeof(tx_config), tx_config);
@@ -922,10 +950,10 @@ int si446x_send_async(struct si446x_device *dev, int len, uint8_t *data,
         return err;
     }
 
-    err = wait_cts(dev);
+    delay_micros(100); // This is the ~60us cited by SiLabs plus margin
 
-    if (err) {
-        return err;
+    if (poll_cts(dev) != 0xFF) {
+        return -ERESETSI;
     }
 
     return 0;
@@ -1049,6 +1077,25 @@ int si446x_setup_tx(struct si446x_device *dev, int len, uint8_t *data,
         return err;
     }
 
+    // Switch to TUNE_TX
+    // This does almost all the work of getting to TX, but helps us avoid an 
+    // apparent silicon bug in RFIC. The bug still happens, but only on the 
+    // transition into TX. Since the TX_TUNE -> TX transition should only take
+    // about 60 us, we can detect this very quickly and reset
+
+    uint8_t next_state = STATE_TUNE_TX;
+    err = send_command(dev, CMD_CHANGE_STATE, sizeof(next_state), &next_state);
+
+    if (err) {
+        return err;
+    }
+
+    err = wait_cts(dev);
+
+    if (err) {
+        return err;
+    }
+
     return 0;
 }
 
@@ -1076,10 +1123,10 @@ int si446x_fire_tx(struct si446x_device *dev)
         return err;
     }
 
-    err = wait_cts(dev);
+    delay_micros(100); // This is the ~60us cited by SiLabs plus margin
 
-    if (err) {
-        return err;
+    if (poll_cts(dev) != 0xFF) {
+        return -ERESETSI;
     }
 
     err = set_property(dev, PROP_PKT_GROUP, PROP_PKT_FIELD_2_LENGTH_12_8,
