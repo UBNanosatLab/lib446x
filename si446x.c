@@ -8,7 +8,7 @@
 
 #include "radio_config.h"
 
-#define MAX_CTS_RETRY 50
+#define MAX_CTS_RETRY 500
 
 static int send_command(struct si446x_device *dev, uint8_t cmd, int data_len,
                         uint8_t *data)
