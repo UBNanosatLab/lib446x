@@ -142,7 +142,7 @@ static int get_property(struct si446x_device *dev, uint8_t prop_grp,
         prop
     };
 
-    err = send_command(dev, CMD_SET_PROPERTY, 3, buf);
+    err = send_command(dev, CMD_GET_PROPERTY, 3, buf);
     if (err) {
         return err;
     }
