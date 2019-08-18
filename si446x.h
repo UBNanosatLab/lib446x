@@ -75,8 +75,9 @@
 
 #define MAX_PACKET_SIZE 255 /**< @brief maximum packet size in bytes*/
 #define FIFO_SIZE 64
-#define RX_FIFO_THRESH 48
-#define TX_FIFO_THRESH 16
+#define FIFO_INIT_FILL 56
+#define RX_FIFO_THRESH 16
+#define TX_FIFO_THRESH 48
 
 /**
  * @brief The internal state of the library

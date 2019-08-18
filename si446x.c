@@ -885,8 +885,8 @@ int si446x_send_async(struct si446x_device *dev, int len, uint8_t *data,
     dev->tx_buf.data = data;
     dev->tx_buf.len = len;
 
-    if (len > FIFO_SIZE - sizeof(packet_len)) {
-        dev->tx_pkt_index = FIFO_SIZE - sizeof(packet_len);
+    if (len > FIFO_INIT_FILL - sizeof(packet_len)) {
+        dev->tx_pkt_index = FIFO_INIT_FILL - sizeof(packet_len);
     } else {
         dev->tx_pkt_index = len;
     }
