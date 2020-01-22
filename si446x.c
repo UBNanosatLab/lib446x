@@ -525,16 +525,16 @@ int si446x_update(struct si446x_device *dev)
         return err;
     }
 
-    // TX_FIFO_ALMOST_EMPTY_PEND
-    if (int_status[2] & TX_FIFO_ALMOST_EMPTY) {
+    // TX_FIFO_ALMOST_EMPTY (status, not pending)
+    if (int_status[3] & TX_FIFO_ALMOST_EMPTY) {
         err = handle_fifo_empty(dev);
         if (err) {
             return err;
         }
     }
 
-    // RX_FIFO_ALMOST_FULL_PEND
-    if (int_status[2] & RX_FIFO_ALMOST_FULL) {
+    // RX_FIFO_ALMOST_FULL (status, not pending)
+    if (int_status[3] & RX_FIFO_ALMOST_FULL) {
         err = handle_fifo_full(dev);
         if (err) {
             return err;
