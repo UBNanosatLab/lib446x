@@ -89,9 +89,10 @@
 #define PROP_PKT_CRC_CONFIG                                 0x00
 #define PROP_PKT_TX_THRESHOLD                               0x0B
 #define PROP_PKT_RX_THRESHOLD                               0x0C
+#define PROP_PKT_FIELD_1_CONFIG                             0x0F
 #define PROP_PKT_FIELD_2_LENGTH_12_8                        0x11
 #define PROP_PKT_FIELD_2_LENGTH_7_0                         0x12
-
+#define PROP_PKT_FIELD_2_CONFIG                             0x13
 #define PROP_PKT_FIELD_2_CRC_CONFIG                         0x14
 
 

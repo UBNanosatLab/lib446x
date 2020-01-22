@@ -1236,6 +1236,48 @@ int si446x_check_crc(struct si446x_device *dev, bool check_crc) {
     return set_property(dev, PROP_PKT_GROUP, PROP_PKT_FIELD_2_CRC_CONFIG, crc_cfg);
 }
 
+int si446x_data_whitening(struct si446x_device *dev, bool whiten) {
+
+    int err;
+    uint8_t pkt_config;
+
+    // Enable whitening for field 1 (length byte)
+    err = get_property(dev, PROP_PKT_GROUP, PROP_PKT_FIELD_1_CONFIG, &pkt_config);
+    if (err) {
+        return err;
+    }
+
+    if (whiten) {
+        pkt_config |= 0x06;  // WHITEN | PN_START
+    } else {
+        pkt_config &= ~0x06; // ~WHITEN | PN_START
+    }
+
+    err = set_property(dev, PROP_PKT_GROUP, PROP_PKT_FIELD_1_CONFIG, pkt_config);
+    if (err) {
+        return err;
+    }
+
+    // Enable whitening for field 2 (payload)
+    err = get_property(dev, PROP_PKT_GROUP, PROP_PKT_FIELD_2_CONFIG, &pkt_config);
+    if (err) {
+        return err;
+    }
+
+    if (whiten) {
+        pkt_config |= 0x02;  // WHITEN
+    } else {
+        pkt_config &= ~0x02; // ~WHITEN
+    }
+
+    err = set_property(dev, PROP_PKT_GROUP, PROP_PKT_FIELD_2_CONFIG, pkt_config);
+    if (err) {
+        return err;
+    }
+
+    return ESUCCESS;
+}
+
 int si446x_rx_timeout(struct si446x_device *dev)
 {
     dev->rx_timeout = true;

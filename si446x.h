@@ -301,6 +301,14 @@ int si446x_rx_timeout(struct si446x_device *dev);
 int si446x_check_crc(struct si446x_device *dev, bool check_crc);
 
 /**
+ * Sets if the packet handler should whiten data (for both TX and RX)
+ * @param device the si446x device
+ * @param whiten should data whitening be enabled
+ * @return negative error code or 0 for success
+ */
+int si446x_data_whitening(struct si446x_device *dev, bool whiten);
+
+/**
  * Ready the given data for transmission
  * @param device the si446x device
  * @param deviation_cfg deviation as a Si446x configuration value (not in Hz!)
