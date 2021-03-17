@@ -67,8 +67,10 @@
 #define PROP_MODEM_GROUP                                    0x20
 #define PROP_MODEM_MOD_TYPE                                 0x00
 #define PROP_MODEM_FREQ_DEV_2                               0x0A
-#define PROP_MODEM_FREQ_DEV_1                         0x0B
-#define PROP_MODEM_FREQ_DEV_0                         0x0C
+#define PROP_MODEM_FREQ_DEV_1                               0x0B
+#define PROP_MODEM_FREQ_DEV_0                               0x0C
+#define PROP_MODEM_FREQ_OFFSET_1                            0x0D
+#define PROP_MODEM_FREQ_OFFSET_0                            0x0E
 
 #define PROP_MODEM_CLKGEN_BAND                              0x51
 

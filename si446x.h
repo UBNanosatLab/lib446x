@@ -333,4 +333,14 @@ int si446x_send_cfg_data_wait(struct si446x_device *dev, int data_len,
  */
 int si446x_abort_tx(struct si446x_device *dev);
 
+
+/**
+ * Set a manual frequency offset
+ * @param device the si446x device
+ * @param offset_counts offset as a Si446x configuration value (not in Hz!)
+ * @return negative error code or 0 for success
+ */
+int si446x_set_freq_offset(struct si446x_device *dev, uint16_t offset_counts);
+
+
 #endif

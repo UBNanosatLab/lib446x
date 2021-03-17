@@ -1129,31 +1129,31 @@ int si446x_fire_tx(struct si446x_device *dev)
         return -ERESETSI;
     }
 
-    err = set_property(dev, PROP_PKT_GROUP, PROP_PKT_FIELD_2_LENGTH_12_8,
-                 ((MAX_PACKET_SIZE) >> 8) & 0xFF);
-    if (err) {
-      return err;
-    }
+//    err = set_property(dev, PROP_PKT_GROUP, PROP_PKT_FIELD_2_LENGTH_12_8,
+//                 ((MAX_PACKET_SIZE) >> 8) & 0xFF);
+//    if (err) {
+//      return err;
+//    }
+//
+//    err = set_property(dev, PROP_PKT_GROUP, PROP_PKT_FIELD_2_LENGTH_7_0,
+//                 (MAX_PACKET_SIZE) & 0xFF);
+//    if (err) {
+//      return err;
+//    }
 
-    err = set_property(dev, PROP_PKT_GROUP, PROP_PKT_FIELD_2_LENGTH_7_0,
-                 (MAX_PACKET_SIZE) & 0xFF);
-    if (err) {
-      return err;
-    }
-
-    // Clear the RX FIFO
-    uint8_t fifo_cmd_buf = CLR_RX_FIFO;
-    err = send_command(dev, CMD_FIFO_INFO, sizeof(fifo_cmd_buf), &fifo_cmd_buf);
-
-    if (err) {
-        return err;
-    }
-
-    err = wait_cts(dev);
-
-    if (err) {
-        return err;
-    }
+//    // Clear the RX FIFO
+//    uint8_t fifo_cmd_buf = CLR_RX_FIFO;
+//    err = send_command(dev, CMD_FIFO_INFO, sizeof(fifo_cmd_buf), &fifo_cmd_buf);
+//
+//    if (err) {
+//        return err;
+//    }
+//
+//    err = wait_cts(dev);
+//
+//    if (err) {
+//        return err;
+//    }
 
     return 0;
 }
@@ -1168,7 +1168,15 @@ int si446x_abort_tx(struct si446x_device *dev)
 
     dev->state = IDLE;
 
-    uint8_t next_state = STATE_READY ;
+    uint8_t next_state = STATE_SLEEP;
+    err = send_command(dev, CMD_CHANGE_STATE, sizeof(next_state), &next_state);
+
+    if (err) {
+        dev->state = TX;
+        return err;
+    }
+
+    next_state = STATE_READY;
     err = send_command(dev, CMD_CHANGE_STATE, sizeof(next_state), &next_state);
 
     if (err) {
@@ -1308,6 +1316,46 @@ int si446x_set_deviation(struct si446x_device *dev, uint32_t deviation) {
 
     return set_property(dev, PROP_MODEM_GROUP, PROP_MODEM_FREQ_DEV_0, 
                 (deviation >> 0) & 0xFF);
+}
+
+int si446x_set_freq_offset(struct si446x_device *dev, uint16_t offset_counts) {
+    int err;
+
+    uint8_t buf[] = {
+        PROP_MODEM_GROUP,
+        0x02, //length
+        PROP_MODEM_FREQ_OFFSET_1,
+        (offset_counts >> 8) & 0xFF,
+        (offset_counts >> 0) & 0xFF
+    };
+
+    err = send_command(dev, CMD_SET_PROPERTY, sizeof(buf), buf);
+
+    if (err) {
+        return err;
+    }
+
+    return wait_cts(dev);
+}
+
+int si446x_idle(struct si446x_device *dev) {
+
+    uint8_t next_state = STATE_SLEEP;
+    int err = send_command(dev, CMD_CHANGE_STATE, sizeof(next_state), &next_state);
+
+    if (err) {
+        return err;
+    }
+
+    next_state = STATE_READY;
+    err = send_command(dev, CMD_CHANGE_STATE, sizeof(next_state), &next_state);
+
+    if (err) {
+        return err;
+    }
+
+    dev->state = IDLE;
+    return ESUCCESS;
 }
 
 //int si446x_get_temp(struct si446x_device *dev, int *temp) {
