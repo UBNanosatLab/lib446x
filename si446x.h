@@ -327,11 +327,11 @@ int si446x_send_cfg_data_wait(struct si446x_device *dev, int data_len,
                               const uint8_t *data);
 
 /**
- * Abort transmitting and idle
+ * Abort transmitting (or receiving) and idle
  * Note: Does NOT enter RX mode
  * @return negative error code or 0 for success
  */
-int si446x_abort_tx(struct si446x_device *dev);
+int si446x_idle(struct si446x_device *dev);
 
 
 /**

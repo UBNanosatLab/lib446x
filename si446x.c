@@ -1158,13 +1158,10 @@ int si446x_fire_tx(struct si446x_device *dev)
     return 0;
 }
 
-int si446x_abort_tx(struct si446x_device *dev)
+int si446x_idle(struct si446x_device *dev)
 {
     int err;
-
-    if (dev->state == RX || dev->state == IDLE) {
-        return -EBUSY;
-    }
+    enum si446x_state old_state = dev->state;
 
     dev->state = IDLE;
 
@@ -1172,7 +1169,14 @@ int si446x_abort_tx(struct si446x_device *dev)
     err = send_command(dev, CMD_CHANGE_STATE, sizeof(next_state), &next_state);
 
     if (err) {
-        dev->state = TX;
+        dev->state = old_state;
+        return err;
+    }
+
+    err = wait_cts(dev);
+
+    if (err) {
+        dev->state = old_state;
         return err;
     }
 
@@ -1180,14 +1184,14 @@ int si446x_abort_tx(struct si446x_device *dev)
     err = send_command(dev, CMD_CHANGE_STATE, sizeof(next_state), &next_state);
 
     if (err) {
-        dev->state = TX;
+        dev->state = IDLE;
         return err;
     }
 
     err = wait_cts(dev);
 
     if (err) {
-        dev->state = TX;
+        dev->state = IDLE;
         return err;
     }
 
