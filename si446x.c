@@ -1342,26 +1342,6 @@ int si446x_set_freq_offset(struct si446x_device *dev, uint16_t offset_counts) {
     return wait_cts(dev);
 }
 
-int si446x_idle(struct si446x_device *dev) {
-
-    uint8_t next_state = STATE_SLEEP;
-    int err = send_command(dev, CMD_CHANGE_STATE, sizeof(next_state), &next_state);
-
-    if (err) {
-        return err;
-    }
-
-    next_state = STATE_READY;
-    err = send_command(dev, CMD_CHANGE_STATE, sizeof(next_state), &next_state);
-
-    if (err) {
-        return err;
-    }
-
-    dev->state = IDLE;
-    return ESUCCESS;
-}
-
 //int si446x_get_temp(struct si446x_device *dev, int *temp) {
 //
 //    int err;
