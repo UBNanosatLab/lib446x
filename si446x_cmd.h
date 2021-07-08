@@ -10,6 +10,7 @@
 #define CMD_FIFO_INFO                                       0x15
 #define CMD_GET_INT_STATUS                                  0x20
 #define CMD_GET_PH_STATUS                                   0x21
+#define CMD_GET_MODEM_STATUS                                0x22
 #define CMD_START_TX                                        0x31
 #define CMD_START_RX                                        0x32
 #define CMD_REQUEST_DEVICE_STATE                            0x33
@@ -71,6 +72,8 @@
 #define PROP_MODEM_FREQ_DEV_0                               0x0C
 #define PROP_MODEM_FREQ_OFFSET_1                            0x0D
 #define PROP_MODEM_FREQ_OFFSET_0                            0x0E
+
+#define MODEM_RSSI_COMP                                     0x4E
 
 #define PROP_MODEM_CLKGEN_BAND                              0x51
 

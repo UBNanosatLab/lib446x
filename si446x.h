@@ -342,5 +342,14 @@ int si446x_idle(struct si446x_device *dev);
  */
 int si446x_set_freq_offset(struct si446x_device *dev, uint16_t offset_counts);
 
+/**
+ * Get radio receive signal strength indicator
+ * RSSI is represented as signal power = RSSI * 0.5 dBm/LSB - 134 dBm
+ * @param device the si446x device
+ * @param rssi the current rssi
+ * @param rssi_latch the rssi during the last received packet
+ * @return negative error code or 0 for success
+ */
+int si446x_read_rssi(struct si446x_device *dev, uint8_t *rssi, uint8_t *rssi_latch);
 
 #endif

@@ -1123,7 +1123,7 @@ int si446x_fire_tx(struct si446x_device *dev)
         return err;
     }
 
-    delay_micros(100); // This is the ~60us cited by SiLabs plus margin
+    delay_micros(500); // This is the ~60us cited by SiLabs plus margin
 
     if (poll_cts(dev) != 0xFF) {
         return -ERESETSI;
@@ -1341,6 +1341,39 @@ int si446x_set_freq_offset(struct si446x_device *dev, uint16_t offset_counts) {
 
     return wait_cts(dev);
 }
+
+int si446x_read_rssi(struct si446x_device *dev, uint8_t *rssi, uint8_t *rssi_latch) {
+
+    int err;
+    uint8_t cmd_buf = 0xFF;
+    uint8_t resp_buf[4] = {0};
+    uint8_t comp = 0;
+
+    err = send_command(dev, CMD_GET_MODEM_STATUS, sizeof(cmd_buf), &cmd_buf);
+
+    if (err) {
+        return err;
+    }
+
+    err = read_response(dev, 4, resp_buf);
+
+    if (err) {
+        return err;
+    }
+
+    get_property(dev, PROP_MODEM_GROUP, MODEM_RSSI_COMP, &comp);
+
+    if (rssi) {
+        *rssi = resp_buf[2] + (comp - 0x40);
+    }
+
+    if (rssi_latch) {
+        *rssi_latch = resp_buf[3] + (comp - 0x40);
+    }
+
+    return ESUCCESS;
+}
+
 
 //int si446x_get_temp(struct si446x_device *dev, int *temp) {
 //
